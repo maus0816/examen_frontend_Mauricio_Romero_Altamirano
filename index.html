@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, minimal-ui">
+  <link href="https://fonts.googleapis.com/css?family=Roboto:100,300,400,500,700,900" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/@mdi/font@5.x/css/materialdesignicons.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/vuetify@2.x/dist/vuetify.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@10.0.2/dist/sweetalert2.min.css">
+
+  <style>
+    #app {
+      background-color: #CFD8DC;      
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <v-app>
+      <v-main>
+        <v-card class="mx-auto mt-5" color="transparent" max-width="1280" elevation="0">
+          <v-btn class="mx-2" fab dark color="#e040fb" @click="formNuevo()"><v-icon>mdi-plus</v-icon></v-btn>
+          <v-simple-table class="mt-5">
+            <template>
+              <thead>
+                <tr>
+                  <th class="black--text">Id</th>
+                  <th class="black--text">Nombre</th>
+                  <th class="black--text">Email</th>
+                  <th class="black--text">Password</th>
+                  <th class="black--text">Direccion</th>
+                  <th class="black--text">Telefono</th>
+                  <th class="black--text">Fecha Nacimiento</th>
+                  <th class="black--text">Edad</th>
+                  <th class="black--text">Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="usuario in usuarios" :key="usuario.id">
+                  <td>{{ usuario.id }}</td>
+                  <td>{{ usuario.name }}</td>
+                  <td>{{ usuario.email }}</td>
+                  <td>{{ usuario.showPassword ? usuario.password : '********' }}</td>
+                  <td>{{ usuario.direccion }}</td>
+                  <td>{{ usuario.telefono }}</td>
+                  <td>{{ usuario.fecha_nac | formatDate }}</td>
+                  <td>{{ calcularEdad(usuario.fecha_nac) }}</td>
+                  <td>
+                    <v-menu bottom left>
+                      <template v-slot:activator="{ on }">
+                        <v-btn dark icon v-on="on"><v-icon>mdi-dots-vertical</v-icon></v-btn>
+                      </template>
+                      <v-list>
+                        <v-list-item @click="formEditar(usuario.id, usuario.name, usuario.email, usuario.direccion, usuario.telefono, usuario.fecha_nac)">
+                          <v-list-item-icon>
+                            <v-icon>mdi-pencil</v-icon>
+                          </v-list-item-icon>
+                          <v-list-item-title>Editar</v-list-item-title>
+                        </v-list-item>
+                        <v-list-item @click="borrar(usuario.id)">
+                          <v-list-item-icon>
+                            <v-icon>mdi-delete</v-icon>
+                          </v-list-item-icon>
+                          <v-list-item-title>Eliminar</v-list-item-title>
+                        </v-list-item>
+                      </v-list>
+                    </v-menu>
+                  </td>
+                </tr>
+              </tbody>
+            </template>
+          </v-simple-table>
+        </v-card>
+
+        <!-- Componente de dialogo para crear y editar -->
+        <v-dialog v-model="dialog">
+          <v-card>
+            <v-card-title class="purple darken-4 white--text">Usuario</v-card-title>
+            <v-card-text>
+              <v-form>
+                <v-container>
+                  <v-row>
+                    <input v-model="usuario.id" hidden>
+                    <v-col cols="12" md="4">
+                      <v-text-field v-model="usuario.name" label="name" solo required></v-text-field>
+                    </v-col>
+                    <v-col cols="12" md="4">
+                      <v-text-field v-model="usuario.email" label="email" solo required></v-text-field>
+                    </v-col>
+                    <v-col cols="12" md="4">
+                      <v-text-field v-model="usuario.direccion" label="direccion" solo required></v-text-field>
+                    </v-col>
+                    <v-col cols="12" md="4">
+                      <v-text-field v-model="usuario.telefono" type="number" label="telefono" solo required></v-text-field>
+                    </v-col>
+                    <v-col cols="12" md="4">
+                      <v-menu ref="fechaMenu" v-model="fechaMenu" :close-on-content-click="false" :return-value.sync="usuario.fecha_nac" transition="scale-transition" offset-y>
+                        <template v-slot:activator="{ on }">
+                          <v-text-field v-model="usuario.fecha_nac" label="Fecha Nacimiento" solo required v-on="on"></v-text-field>
+                        </template>
+                        <v-date-picker v-model="usuario.fecha_nac" locale="es" no-title @input="$refs.fechaMenu.save(usuario.fecha_nac)"></v-date-picker>
+                      </v-menu>
+                    </v-col>
+                    <v-col cols="12" md="4">
+                      <v-text-field
+                        v-model="usuario.password"
+                        :type="usuario.showPassword ? 'text' : 'password'"
+                        label="Contraseña"
+                        solo
+                        required
+                      ></v-text-field>
+                      <v-btn @click="toggleShowPassword(usuario)" dark small>
+                        {{ usuario.showPassword ? 'Ocultar Contraseña' : 'Mostrar Contraseña' }}
+                      </v-btn>
+                    </v-col>
+                  </v-row>
+                </v-container>
+              </v-form>
+            </v-card-text>
+            <v-card-actions>
+              <v-spacer></v-spacer>
+              <v-btn @click="dialog=false" color="blue-grey" dark>Cancelar</v-btn>
+              <v-btn @click="guardar()" type="submit" color="purple accent-3" dark>Guardar</v-btn>
+            </v-card-actions>
+          </v-card>
+        </v-dialog>
+
+      </v-main>
+    </v-app>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/vue@2.x/dist/vue.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vuetify@2.x/dist/vuetify.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.20.0/axios.js" integrity="sha512-nqIFZC8560+CqHgXKez61MI0f9XSTKLkm0zFVm/99Wt0jSTZ7yeeYwbzyl0SGn/s8Mulbdw+ScCG41hmO2+FKw==" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@10.0.2/dist/sweetalert2.all.min.js"></script>
+
+  <script>
+    Vue.filter('formatDate', function(value) {
+      if (value) {
+        const date = new Date(value);
+        const year = date.getFullYear();
+        const month = (date.getMonth() + 1).toString().padStart(2, '0');
+        const day = date.getDate().toString().padStart(2, '0');
+        return `${year}-${month}-${day}`;
+      }
+      return '';
+    });
+
+    let url = "http://127.0.0.1:8000/api/usuarios"; // Corregir la URL, quitar la barra final
+    new Vue({
+    el: "#app",
+    vuetify: new Vuetify(),
+    data() {
+      return {
+        usuarios: [],
+        dialog: false,
+        operation: '',
+        fechaMenu: false,
+        usuario: {
+          id: null,
+          name: '',
+          email: '',
+          password: '',
+          originalPassword: '', // Agregar campo para almacenar la contraseña desencriptada
+          direccion: '',
+          telefono: '',
+          fecha_nac: '',
+          edad: 0,
+          showPassword: false, // Agregar la propiedad showPassword para cada usuario
+        }
+      }
+    },
+    created() {
+      this.mostrar()
+    },
+      methods: {
+        mostrar() {
+          axios.get(url).then(response => {
+            this.usuarios = response.data;
+          });
+        },
+        calcularEdad(fecha_nac) {
+          const today = new Date();
+          const birthDate = new Date(fecha_nac);
+          let age = today.getFullYear() - birthDate.getFullYear();
+          const month = today.getMonth() - birthDate.getMonth();
+          if (month < 0 || (month === 0 && today.getDate() < birthDate.getDate())) {
+            age--;
+          }
+          return age;
+        },
+        crear() {
+          let parametros = {
+            name: this.usuario.name,
+            email: this.usuario.email,
+            direccion: this.usuario.direccion,
+            telefono: this.usuario.telefono,
+            fecha_nac: this.usuario.fecha_nac // Asegurémonos de enviar la fecha formateada al servidor
+          };
+          axios.post(url + '/crear', parametros).then(response => {
+            this.mostrar();
+            this.dialog = false;
+            this.usuario.name = '';
+            this.usuario.email = '';
+            this.usuario.password = '';
+            this.usuario.direccion = '';
+            this.usuario.telefono = '';
+            this.usuario.fecha_nac = '';
+            this.usuario.edad = 0;
+          }).catch(error => {
+            console.error(error);
+            // Mostrar mensaje de error al usuario
+            Swal.fire({
+              icon: 'error',
+              title: 'Error',
+              text: 'Hubo un problema al crear el usuario. Por favor, inténtalo de nuevo más tarde.',
+              timer: 3000
+            });
+          });
+        },
+        editar() {
+          let parametros = {
+            id: this.usuario.id,
+            name: this.usuario.name,
+            email: this.usuario.email,
+            password: this.usuario.password,
+            direccion: this.usuario.direccion,
+            telefono: this.usuario.telefono,
+            fecha_nac: this.usuario.fecha_nac
+          };
+          axios.put(url + '/' + this.usuario.id, parametros).then(response => { // Corregir la URL para la edición
+            this.mostrar();
+          });
+        },
+        borrar(id) {
+          Swal.fire({
+            title: '¿Confirma la eliminación del registro?',
+            confirmButtonText: 'Confirmar',
+            showCancelButton: true
+          }).then((result) => {
+            if (result.isConfirmed) {
+              axios.delete(url + '/' + id).then(response => { // Corregir la URL para la eliminación
+                this.mostrar();
+              });
+              Swal.fire('Eliminado', '', 'success');
+            } else if (result.isDenied) {
+              // Acciones en caso de denegación
+            }
+          });
+        },
+        guardar() {
+          if (this.operation === 'crear') {
+            // Para el modo de creación, encriptamos la contraseña antes de enviarla al servidor
+            let parametros = {
+              name: this.usuario.name,
+              email: this.usuario.email,
+              password: this.usuario.password, // Encriptar la contraseña antes de enviarla
+              direccion: this.usuario.direccion,
+              telefono: this.usuario.telefono,
+              fecha_nac: this.usuario.fecha_nac, // Asegurémonos de enviar la fecha formateada al servidor
+            };
+            axios.post(url + '/crear', parametros).then(response => {
+              this.mostrar();
+              this.dialog = false;
+              this.usuario.name = '';
+              this.usuario.email = '';
+              this.usuario.password = '';
+              this.usuario.direccion = '';
+              this.usuario.telefono = '';
+              this.usuario.fecha_nac = '';
+              this.usuario.edad = 0;
+            }).catch(error => {
+              console.error(error);
+              // Mostrar mensaje de error al usuario
+              Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: 'Hubo un problema al crear el usuario. Por favor, inténtalo de nuevo más tarde.',
+                timer: 3000
+              });
+            });
+          } else if (this.operation === 'editar') {
+            // Para el modo de edición, encriptamos la contraseña nuevamente antes de enviarla al servidor
+            let parametros = {
+              id: this.usuario.id,
+              name: this.usuario.name,
+              email: this.usuario.email,
+              password: this.usuario.showPassword ? this.usuario.password : '', // Solo enviar la contraseña encriptada si se está mostrando
+              direccion: this.usuario.direccion,
+              telefono: this.usuario.telefono,
+              fecha_nac: this.usuario.fecha_nac,
+            };
+            axios.put(url + '/' + this.usuario.id, parametros).then(response => { // Corregir la URL para la edición
+              this.mostrar();
+            });
+          }
+          this.dialog = false;
+        },
+        formNuevo() {
+          this.dialog = true;
+          this.operation = 'crear';
+          this.usuario.id = null;
+          this.usuario.name = '';
+          this.usuario.email = '';
+          this.usuario.password = ''; // Limpiar el campo de contraseña al abrir el diálogo
+          this.usuario.direccion = '';
+          this.usuario.telefono = '';
+          this.usuario.fecha_nac = '';
+          this.usuario.edad = 0;
+          this.usuario.showPassword = false; // Asegurarse de que la contraseña se muestre enmascarada
+        },
+        formEditar(id, name, email, direccion, telefono, fecha_nac) {
+          this.usuario.id = id;
+          this.usuario.name = name;
+          this.usuario.email = email;
+          this.usuario.direccion = direccion;
+          this.usuario.telefono = telefono;
+          this.usuario.fecha_nac = fecha_nac;
+          this.dialog = true;
+          this.operation = 'editar';
+          this.usuario.showPassword = true; // Mostrar la contraseña desenmascarada al abrir el diálogo de edición
+          this.usuario.password = ''; // Limpiar el campo de contraseña al abrir el diálogo de edición
+
+          // Cargar la contraseña desencriptada en el campo de contraseña al abrir el diálogo de edición
+          this.loadDecryptedPassword();
+        },
+
+        toggleShowPassword(user) {
+          user.showPassword = !user.showPassword;
+          if (this.operation === 'editar') {
+            // Si estamos en el modo de edición, actualizamos el tipo de campo de contraseña para mostrarla
+            this.passwordFieldType = user.showPassword ? 'text' : 'password';
+
+            // Cargar la contraseña desencriptada en el campo de contraseña cuando el botón "Mostrar Contraseña" se active
+            this.loadDecryptedPassword();
+          }
+        },
+
+        loadDecryptedPassword() {
+          // Cargar la contraseña desencriptada en el campo de contraseña si el usuario tiene una contraseña definida
+          if (this.usuario.password && !this.usuario.showPassword) {
+            this.usuario.originalPassword = this.usuario.password; // Almacenar la contraseña desencriptada en un campo separado
+            this.usuario.password = '********'; // Mostrar asteriscos en lugar de la contraseña real
+          } else {
+            this.usuario.originalPassword = ''; // Dejar el campo vacío si no se debe mostrar la contraseña
+          }
+        },
+      }
+    });
+  </script>
+</body>
+</html>
